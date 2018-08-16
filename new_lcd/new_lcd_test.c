@@ -19,7 +19,6 @@
 
 static int FBCleanScreen(unsigned int dwBackColor);     /* 清屏函数，把显示屏初始化为黑色 */
 static int FBShowPixel(int iX, int iY, unsigned int dwColor);   /* 填充像素，dwcolor就是我们要在一个像素显示的颜色 */
-//static int FBShowLine(int iX, int iY, unsigned char *pucRGBArray) ;   // 将未处理过的颜色数据写到LCD去	
 
 #define FB_DEVICE_NAME "/dev/fb0"
 #define DBG_PRINTF printf
@@ -39,50 +38,32 @@ const unsigned char gImage_test2[261128];
 
 
 static int i = 0 ;
-/*
-static int FBShowLine(int iX, int iY, unsigned char *pucRGBArray)    // 将未处理过的颜色数据写到LCD去	
+
+static int FBShowPixel(int iX, int iY, unsigned int dwColor)  
 {
-  unsigned int dwColor;
+  unsigned char *pucFB;
+  unsigned short *pwFB16bpp;
+  unsigned short wColor16bpp; /* 565 */
+  int iRed;
+  int iGreen;
+  int iBlue;
 
-  if (iY >= g_tFBVar.yres)
-   return -1;
+  if ((iX >= g_tFBVar.xres) || (iY >= g_tFBVar.yres))
+    {
+      DBG_PRINTF("out of region\n");
+      return -1;
+    }
 
-  if (iX >= g_tFBVar.xres)
-   return -1;
+  pucFB      = g_pucFBMem + g_dwLineWidth * iY + g_dwPixelWidth * iX;
+  pwFB16bpp  = (unsigned short *)pucFB;
 
-
-  dwColor = (0x1f<<16) + (0x0<<8) + (0x1f<<0);
-
-  FBShowPixel(iX, iY, dwColor);
+  iRed   = (dwColor >> 11) & 0x1f;
+  iGreen = (dwColor >> 5) & 0x3f;
+  iBlue  = (dwColor >> 0) & 0x1f;
+  wColor16bpp = (iRed << 11) | (iGreen << 5) | iBlue;
+  *pwFB16bpp = wColor16bpp;
 
   return 0;
-}
-*/
-static int FBShowPixel(int iX, int iY, unsigned int dwColor)  /* 填充像素，dwcolor就是我们要在一个像素显示的颜色 */
-{
-unsigned char *pucFB;
-unsigned short *pwFB16bpp;
-unsigned short wColor16bpp; /* 565 */
-int iRed;
-int iGreen;
-int iBlue;
-
-if ((iX >= g_tFBVar.xres) || (iY >= g_tFBVar.yres))
-{
-DBG_PRINTF("out of region\n");
-return -1;
-}
-
-pucFB      = g_pucFBMem + g_dwLineWidth * iY + g_dwPixelWidth * iX;
-pwFB16bpp  = (unsigned short *)pucFB;
-
-iRed   = (dwColor >> 11) & 0x1f;
-iGreen = (dwColor >> 5) & 0x3f;
-iBlue  = (dwColor >> 0) & 0x1f;
-wColor16bpp = (iRed << 11) | (iGreen << 5) | iBlue;
-*pwFB16bpp = wColor16bpp;
-
-return 0;
 
 }
 
@@ -90,28 +71,28 @@ return 0;
 
 static int FBCleanScreen(unsigned int dwBackColor)
 {
-unsigned char *pucFB;
-unsigned short *pwFB16bpp;
-unsigned short wColor16bpp; /* 565 */
-int iRed;
-int iGreen;
-int iBlue;
-int i = 0;
+  unsigned char *pucFB;
+  unsigned short *pwFB16bpp;
+  unsigned short wColor16bpp; /* 565 */
+  int iRed;
+  int iGreen;
+  int iBlue;
+  int i = 0;
 
-pucFB      = g_pucFBMem;
-pwFB16bpp  = (unsigned short *)pucFB;
+  pucFB      = g_pucFBMem;
+  pwFB16bpp  = (unsigned short *)pucFB;
 
-iRed   = (dwBackColor >> (16+3)) & 0x1f;
-iGreen = (dwBackColor >> (8+2)) & 0x3f;
-iBlue  = (dwBackColor >> 3) & 0x1f;
-wColor16bpp = (iRed << 11) | (iGreen << 5) | iBlue;
-while (i < g_dwScreenSize)
-  {
-    *pwFB16bpp = wColor16bpp;
-     pwFB16bpp++;
-     i += 2;
-  }
-printf("finished!\n");
+  iRed   = (dwBackColor >> (16+3)) & 0x1f;
+  iGreen = (dwBackColor >> (8+2)) & 0x3f;
+  iBlue  = (dwBackColor >> 3) & 0x1f;
+  wColor16bpp = (iRed << 11) | (iGreen << 5) | iBlue;
+  while (i < g_dwScreenSize)
+    {
+      *pwFB16bpp = wColor16bpp;
+       pwFB16bpp++;
+       i += 2;
+    }
+  printf("finished!\n");
 }
 
 
@@ -138,7 +119,7 @@ int main(int argc,char **argv)
       return -1;
     }
   g_dwScreenSize = g_tFBVar.xres * g_tFBVar.yres * g_tFBVar.bits_per_pixel / 8;  /* 计算lcd屏幕大小 */
-  g_pucFBMem = (unsigned char *)mmap(NULL , g_dwScreenSize, PROT_READ | PROT_WRITE, MAP_SHARED, g_fd, 0);   /* 把显存映射成内存一样，方便我们直接操作 */
+  g_pucFBMem = (unsigned char *)mmap(NULL , g_dwScreenSize, PROT_READ | PROT_WRITE, MAP_SHARED, g_fd, 0);   /* 把显存映射成内存一样*/
   if (0 > g_pucFBMem)
     {
       DBG_PRINTF("can't mmap\n");
